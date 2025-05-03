@@ -30290,7 +30290,7 @@ function createPullRequest(inputs, prBranch) {
             });
             // Apply labels
             const appliedLabels = inputs.labels;
-            if (inputs.inherit_labels) {
+            if (inputs.inheritLabels) {
                 const prLabels = pull_request.labels;
                 if (prLabels) {
                     for (const item of prLabels) {
@@ -30418,7 +30418,7 @@ function run() {
                 body: core.getInput('body'),
                 force: utils.getInputAsBoolean('force'),
                 labels: utils.getInputAsArray('labels'),
-                inherit_labels: utils.getInputAsBoolean('inherit_labels'),
+                inheritLabels: utils.getInputAsBoolean('inherit-labels'),
                 assignees: utils.getInputAsArray('assignees'),
                 reviewers: utils.getInputAsArray('reviewers'),
                 teamReviewers: utils.getInputAsArray('team-reviewers'),

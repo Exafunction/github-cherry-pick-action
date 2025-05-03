@@ -33,7 +33,7 @@ inputs:
   labels:
     description: "A comma or newline separated list of labels."
     required: false
-  inherit_labels:
+  inherit-labels:
     description: "Set to false if you want to inherit labels from parent PR"
     required: false
     default: "true"
@@ -52,6 +52,9 @@ inputs:
     description: "Name of the new cherry pick branch."
   force:
     description: "Forcefully push the branch to remote branch"
+    required: false
+  strategy-option:
+    description: "Strategy option for cherry pick - default strategy is 'recursive', this is the X option to it"
     required: false
 runs:
   using: node20

@@ -13,7 +13,7 @@ export interface Inputs {
   title?: string
   body?: string
   labels: string[]
-  inherit_labels?: boolean
+  inheritLabels?: boolean
   assignees: string[]
   reviewers: string[]
   teamReviewers: string[]
@@ -75,7 +75,7 @@ export async function createPullRequest(
     // Apply labels
     const appliedLabels = inputs.labels
 
-    if (inputs.inherit_labels) {
+    if (inputs.inheritLabels) {
       const prLabels = pull_request.labels
       if (prLabels) {
         for (const item of prLabels) {
