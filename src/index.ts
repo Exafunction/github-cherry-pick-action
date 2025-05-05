@@ -2,14 +2,13 @@ import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as github from '@actions/github'
 import * as io from '@actions/io'
-import { PullRequest } from '@octokit/webhooks-types'
-import { Inputs, createPullRequest } from './github-helper'
+import {PullRequest} from '@octokit/webhooks-types'
+import {Inputs, createPullRequest} from './github-helper'
 import * as utils from './utils'
 
 const CHERRYPICK_EMPTY =
   'The previous cherry-pick is now empty, possibly due to conflict resolution.'
-const CHERRYPICK_CONFLICT =
-  'CONFLICT(content)';
+const CHERRYPICK_CONFLICT = 'CONFLICT(content)'
 
 export async function run(): Promise<void> {
   try {
@@ -70,38 +69,61 @@ export async function run(): Promise<void> {
 
     // Cherry pick
     core.startGroup('Cherry picking')
-    const result = await gitExecution([
-      'cherry-pick',
-      '-m',
-      '1',
-      '--strategy=recursive',
-      `--strategy-option=${inputs.strategyOption ?? 'theirs'}`,
-      `${githubSha}`
-    ], false)
-    if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY) && !result.stderr.includes(CHERRYPICK_CONFLICT)) {
-      throw new Error(`Unexpected error: ${result.stderr}`)
+    let conflict = false
+    const result = await gitExecution(
+      [
+        'cherry-pick',
+        '-m',
+        '1',
+        '--strategy=recursive',
+        `--strategy-option=${inputs.strategyOption ?? 'theirs'}`,
+        `${githubSha}`
+      ],
+      false
+    )
+    if (
+      result.exitCode !== 0 &&
+      !result.stderr.includes(CHERRYPICK_EMPTY) &&
+      !result.stderr.includes(CHERRYPICK_CONFLICT)
+    ) {
+      throw new Error(`Unhandled error: ${result.stderr}`)
     }
 
     // Handle conflicts by finding and committing conflicted files
     if (result.stderr.includes(CHERRYPICK_CONFLICT)) {
+      conflict = true
       if (!inputs.commitConflicts) {
-        throw new Error('Conflicts detected but commit-conflicts is set to false');
+        throw new Error(
+          'Conflicts detected but commit-conflicts is set to false'
+        )
       }
 
-      core.info('Conflicts detected. Finding and committing conflicted files...')
+      core.info(
+        'Conflicts detected. Finding and committing conflicted files...'
+      )
 
       // Find all files with conflicts
-      const conflictResult = await gitExecution(['diff', '--name-only', '--diff-filter=U'])
+      const conflictResult = await gitExecution([
+        'diff',
+        '--name-only',
+        '--diff-filter=U'
+      ])
 
       if (conflictResult.stdout.trim()) {
         const conflictedFiles = conflictResult.stdout.trim().split('\n')
-        core.info(`Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`)
+        core.info(
+          `Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`
+        )
 
         // Add all conflicted files
         await gitExecution(['add', ...conflictedFiles])
 
         // Commit the resolved conflicts
-        await gitExecution(['commit', '-m', `Resolved conflicts in cherry-pick of ${githubSha}`])
+        await gitExecution([
+          'commit',
+          '-m',
+          `Resolved conflicts in cherry-pick of ${githubSha}`
+        ])
         core.info('Committed resolved conflicts')
       }
     }
@@ -119,7 +141,7 @@ export async function run(): Promise<void> {
 
     // Create pull request
     core.startGroup('Opening pull request')
-    const pull = await createPullRequest(inputs, prBranch)
+    const pull = await createPullRequest(inputs, prBranch, conflict)
     core.setOutput('data', JSON.stringify(pull.data))
     core.setOutput('number', pull.data.number)
     core.setOutput('html_url', pull.data.html_url)
@@ -131,7 +153,10 @@ export async function run(): Promise<void> {
   }
 }
 
-async function gitExecution(params: string[], failOnNonZeroExit: boolean = true): Promise<GitOutput> {
+async function gitExecution(
+  params: string[],
+  failOnNonZeroExit = true
+): Promise<GitOutput> {
   const result = new GitOutput()
   const stdout: string[] = []
   const stderr: string[] = []

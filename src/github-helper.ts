@@ -25,7 +25,8 @@ export interface Inputs {
 
 export async function createPullRequest(
   inputs: Inputs,
-  prBranch: string
+  prBranch: string,
+  conflict: boolean
 ): Promise<any> {
   const octokit = github.getOctokit(inputs.token)
   if (!github.context.payload) {
@@ -60,6 +61,12 @@ export async function createPullRequest(
         '{old_pull_request_id}',
         pull_request.number.toString()
       )
+    }
+
+    if (conflict) {
+      body =
+        `Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).` +
+        `\n${body}`
     }
     core.info(`Using body '${body}'`)
 
