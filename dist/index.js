@@ -30466,7 +30466,7 @@ function run() {
                 '--strategy=recursive',
                 `--strategy-option=${(_a = inputs.strategyOption) !== null && _a !== void 0 ? _a : 'theirs'}`,
                 `${githubSha}`
-            ]);
+            ], false);
             if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY) && !result.stderr.includes(CHERRYPICK_CONFLICT)) {
                 throw new Error(`Unexpected error: ${result.stderr}`);
             }
@@ -30514,8 +30514,8 @@ function run() {
     });
 }
 exports.run = run;
-function gitExecution(params) {
-    return __awaiter(this, void 0, void 0, function* () {
+function gitExecution(params_1) {
+    return __awaiter(this, arguments, void 0, function* (params, failOnNonZeroExit = true) {
         const result = new GitOutput();
         const stdout = [];
         const stderr = [];
@@ -30527,7 +30527,8 @@ function gitExecution(params) {
                 stderr: (data) => {
                     stderr.push(data.toString());
                 }
-            }
+            },
+            ignoreReturnCode: !failOnNonZeroExit
         };
         const gitPath = yield io.which('git', true);
         result.exitCode = yield exec.exec(gitPath, params, options);

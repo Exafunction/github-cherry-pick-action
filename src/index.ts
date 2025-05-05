@@ -77,7 +77,7 @@ export async function run(): Promise<void> {
       '--strategy=recursive',
       `--strategy-option=${inputs.strategyOption ?? 'theirs'}`,
       `${githubSha}`
-    ])
+    ], false)
     if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY) && !result.stderr.includes(CHERRYPICK_CONFLICT)) {
       throw new Error(`Unexpected error: ${result.stderr}`)
     }
@@ -131,7 +131,7 @@ export async function run(): Promise<void> {
   }
 }
 
-async function gitExecution(params: string[]): Promise<GitOutput> {
+async function gitExecution(params: string[], failOnNonZeroExit: boolean = true): Promise<GitOutput> {
   const result = new GitOutput()
   const stdout: string[] = []
   const stderr: string[] = []
@@ -144,7 +144,8 @@ async function gitExecution(params: string[]): Promise<GitOutput> {
       stderr: (data: Buffer) => {
         stderr.push(data.toString())
       }
-    }
+    },
+    ignoreReturnCode: !failOnNonZeroExit
   }
 
   const gitPath = await io.which('git', true)
