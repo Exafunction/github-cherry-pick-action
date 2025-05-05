@@ -30245,6 +30245,7 @@ exports.createPullRequest = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const ERROR_PR_REVIEW_FROM_AUTHOR = 'Review cannot be requested from pull request author';
+const CONFLICTS_DETECTED_WARNING = `## Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).\n\n`;
 function createPullRequest(inputs, prBranch, conflict) {
     return __awaiter(this, void 0, void 0, function* () {
         const octokit = github.getOctokit(inputs.token);
@@ -30279,9 +30280,7 @@ function createPullRequest(inputs, prBranch, conflict) {
                 body = body.replace('{old_pull_request_id}', pull_request.number.toString());
             }
             if (conflict) {
-                body =
-                    `Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).` +
-                        `\n${body}`;
+                body = `${CONFLICTS_DETECTED_WARNING}${body}`;
             }
             core.info(`Using body '${body}'`);
             // Create PR

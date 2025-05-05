@@ -5,6 +5,8 @@ import {PullRequest} from '@octokit/webhooks-types'
 const ERROR_PR_REVIEW_FROM_AUTHOR =
   'Review cannot be requested from pull request author'
 
+const CONFLICTS_DETECTED_WARNING = `## Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).\n\n`
+
 export interface Inputs {
   token: string
   committer: string
@@ -64,9 +66,7 @@ export async function createPullRequest(
     }
 
     if (conflict) {
-      body =
-        `Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).` +
-        `\n${body}`
+      body = `${CONFLICTS_DETECTED_WARNING}${body}`
     }
     core.info(`Using body '${body}'`)
 
