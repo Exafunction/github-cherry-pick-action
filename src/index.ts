@@ -8,7 +8,7 @@ import * as utils from './utils'
 
 const CHERRYPICK_EMPTY =
   'The previous cherry-pick is now empty, possibly due to conflict resolution.'
-const CHERRYPICK_CONFLICT = 'CONFLICT(content)'
+const CHERRYPICK_CONFLICT = 'CONFLICT (content)'
 
 export async function run(): Promise<void> {
   try {

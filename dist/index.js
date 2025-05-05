@@ -30410,7 +30410,7 @@ const io = __importStar(__nccwpck_require__(7436));
 const github_helper_1 = __nccwpck_require__(5366);
 const utils = __importStar(__nccwpck_require__(1314));
 const CHERRYPICK_EMPTY = 'The previous cherry-pick is now empty, possibly due to conflict resolution.';
-const CHERRYPICK_CONFLICT = 'CONFLICT(content)';
+const CHERRYPICK_CONFLICT = 'CONFLICT (content)';
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
