@@ -30475,11 +30475,11 @@ function run() {
             ], false);
             if (result.exitCode !== 0 &&
                 !result.stderr.includes(CHERRYPICK_EMPTY) &&
-                !result.stderr.includes(CHERRYPICK_CONFLICT)) {
+                !result.stdout.includes(CHERRYPICK_CONFLICT)) {
                 throw new Error(`Unhandled error: ${result.stderr}`);
             }
             // Handle conflicts by finding and committing conflicted files
-            if (result.stderr.includes(CHERRYPICK_CONFLICT)) {
+            if (result.stdout.includes(CHERRYPICK_CONFLICT)) {
                 conflict = true;
                 if (!inputs.commitConflicts) {
                     throw new Error('Conflicts detected but commit-conflicts is set to false');
