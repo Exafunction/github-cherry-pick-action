@@ -5,6 +5,8 @@ import {PullRequest} from '@octokit/webhooks-types'
 const ERROR_PR_REVIEW_FROM_AUTHOR =
   'Review cannot be requested from pull request author'
 
+const CONFLICTS_DETECTED_WARNING = `## Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).\n\n`
+
 export interface Inputs {
   token: string
   committer: string
@@ -20,11 +22,13 @@ export interface Inputs {
   cherryPickBranch?: string
   strategyOption?: string
   force?: boolean
+  commitConflicts?: boolean
 }
 
 export async function createPullRequest(
   inputs: Inputs,
-  prBranch: string
+  prBranch: string,
+  conflict: boolean
 ): Promise<any> {
   const octokit = github.getOctokit(inputs.token)
   if (!github.context.payload) {
@@ -59,6 +63,10 @@ export async function createPullRequest(
         '{old_pull_request_id}',
         pull_request.number.toString()
       )
+    }
+
+    if (conflict) {
+      body = `${CONFLICTS_DETECTED_WARNING}${body}`
     }
     core.info(`Using body '${body}'`)
 

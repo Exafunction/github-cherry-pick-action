@@ -30245,7 +30245,8 @@ exports.createPullRequest = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const ERROR_PR_REVIEW_FROM_AUTHOR = 'Review cannot be requested from pull request author';
-function createPullRequest(inputs, prBranch) {
+const CONFLICTS_DETECTED_WARNING = `## Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).\n\n`;
+function createPullRequest(inputs, prBranch, conflict) {
     return __awaiter(this, void 0, void 0, function* () {
         const octokit = github.getOctokit(inputs.token);
         if (!github.context.payload) {
@@ -30277,6 +30278,9 @@ function createPullRequest(inputs, prBranch) {
                 // if the body comes from inputs, we replace {old_pull_request_id}
                 // to make it easy to reference the previous pull request in the new
                 body = body.replace('{old_pull_request_id}', pull_request.number.toString());
+            }
+            if (conflict) {
+                body = `${CONFLICTS_DETECTED_WARNING}${body}`;
             }
             core.info(`Using body '${body}'`);
             // Create PR
@@ -30405,6 +30409,7 @@ const io = __importStar(__nccwpck_require__(7436));
 const github_helper_1 = __nccwpck_require__(5366);
 const utils = __importStar(__nccwpck_require__(1314));
 const CHERRYPICK_EMPTY = 'The previous cherry-pick is now empty, possibly due to conflict resolution.';
+const CHERRYPICK_CONFLICT = 'CONFLICT (content)';
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -30423,7 +30428,8 @@ function run() {
                 reviewers: utils.getInputAsArray('reviewers'),
                 teamReviewers: utils.getInputAsArray('team-reviewers'),
                 cherryPickBranch: core.getInput('cherry-pick-branch'),
-                strategyOption: core.getInput('strategy-option')
+                strategyOption: core.getInput('strategy-option'),
+                commitConflicts: utils.getInputAsBoolean('commit-conflicts')
             };
             core.info(`Cherry pick into branch ${inputs.branch}!`);
             // the value of merge_commit_sha changes depending on the status of the pull request
@@ -30457,6 +30463,7 @@ function run() {
             core.endGroup();
             // Cherry pick
             core.startGroup('Cherry picking');
+            let conflict = false;
             const result = yield gitExecution([
                 'cherry-pick',
                 '-m',
@@ -30464,9 +30471,38 @@ function run() {
                 '--strategy=recursive',
                 `--strategy-option=${(_a = inputs.strategyOption) !== null && _a !== void 0 ? _a : 'theirs'}`,
                 `${githubSha}`
-            ]);
-            if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY)) {
-                throw new Error(`Unexpected error: ${result.stderr}`);
+            ], false);
+            if (result.exitCode !== 0 &&
+                !result.stderr.includes(CHERRYPICK_EMPTY) &&
+                !result.stdout.includes(CHERRYPICK_CONFLICT)) {
+                throw new Error(`Unhandled error: ${result.stderr}`);
+            }
+            // Handle conflicts by finding and committing conflicted files
+            if (result.stdout.includes(CHERRYPICK_CONFLICT)) {
+                conflict = true;
+                if (!inputs.commitConflicts) {
+                    throw new Error('Conflicts detected but commit-conflicts is set to false');
+                }
+                core.info('Conflicts detected. Finding and committing conflicted files...');
+                // Find all files with conflicts
+                const conflictResult = yield gitExecution([
+                    'diff',
+                    '--name-only',
+                    '--diff-filter=U'
+                ]);
+                if (conflictResult.stdout.trim()) {
+                    const conflictedFiles = conflictResult.stdout.trim().split('\n');
+                    core.info(`Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`);
+                    // Add all conflicted files
+                    yield gitExecution(['add', ...conflictedFiles]);
+                    // Commit the resolved conflicts
+                    yield gitExecution([
+                        'commit',
+                        '-m',
+                        `Resolved conflicts in cherry-pick of ${githubSha}`
+                    ]);
+                    core.info('Committed resolved conflicts');
+                }
             }
             core.endGroup();
             // Push new branch
@@ -30480,7 +30516,7 @@ function run() {
             core.endGroup();
             // Create pull request
             core.startGroup('Opening pull request');
-            const pull = yield (0, github_helper_1.createPullRequest)(inputs, prBranch);
+            const pull = yield (0, github_helper_1.createPullRequest)(inputs, prBranch, conflict);
             core.setOutput('data', JSON.stringify(pull.data));
             core.setOutput('number', pull.data.number);
             core.setOutput('html_url', pull.data.html_url);
@@ -30494,8 +30530,8 @@ function run() {
     });
 }
 exports.run = run;
-function gitExecution(params) {
-    return __awaiter(this, void 0, void 0, function* () {
+function gitExecution(params_1) {
+    return __awaiter(this, arguments, void 0, function* (params, failOnNonZeroExit = true) {
         const result = new GitOutput();
         const stdout = [];
         const stderr = [];
@@ -30507,7 +30543,8 @@ function gitExecution(params) {
                 stderr: (data) => {
                     stderr.push(data.toString());
                 }
-            }
+            },
+            ignoreReturnCode: !failOnNonZeroExit
         };
         const gitPath = yield io.which('git', true);
         result.exitCode = yield exec.exec(gitPath, params, options);
