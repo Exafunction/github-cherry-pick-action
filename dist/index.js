@@ -30245,7 +30245,7 @@ exports.createPullRequest = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const ERROR_PR_REVIEW_FROM_AUTHOR = 'Review cannot be requested from pull request author';
-function createPullRequest(inputs, prBranch) {
+function createPullRequest(inputs, prBranch, conflict) {
     return __awaiter(this, void 0, void 0, function* () {
         const octokit = github.getOctokit(inputs.token);
         if (!github.context.payload) {
@@ -30277,6 +30277,11 @@ function createPullRequest(inputs, prBranch) {
                 // if the body comes from inputs, we replace {old_pull_request_id}
                 // to make it easy to reference the previous pull request in the new
                 body = body.replace('{old_pull_request_id}', pull_request.number.toString());
+            }
+            if (conflict) {
+                body =
+                    `Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).` +
+                        `\n${body}`;
             }
             core.info(`Using body '${body}'`);
             // Create PR
@@ -30459,6 +30464,7 @@ function run() {
             core.endGroup();
             // Cherry pick
             core.startGroup('Cherry picking');
+            let conflict = false;
             const result = yield gitExecution([
                 'cherry-pick',
                 '-m',
@@ -30467,24 +30473,35 @@ function run() {
                 `--strategy-option=${(_a = inputs.strategyOption) !== null && _a !== void 0 ? _a : 'theirs'}`,
                 `${githubSha}`
             ], false);
-            if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY) && !result.stderr.includes(CHERRYPICK_CONFLICT)) {
-                throw new Error(`Unexpected error: ${result.stderr}`);
+            if (result.exitCode !== 0 &&
+                !result.stderr.includes(CHERRYPICK_EMPTY) &&
+                !result.stderr.includes(CHERRYPICK_CONFLICT)) {
+                throw new Error(`Unhandled error: ${result.stderr}`);
             }
             // Handle conflicts by finding and committing conflicted files
             if (result.stderr.includes(CHERRYPICK_CONFLICT)) {
+                conflict = true;
                 if (!inputs.commitConflicts) {
                     throw new Error('Conflicts detected but commit-conflicts is set to false');
                 }
                 core.info('Conflicts detected. Finding and committing conflicted files...');
                 // Find all files with conflicts
-                const conflictResult = yield gitExecution(['diff', '--name-only', '--diff-filter=U']);
+                const conflictResult = yield gitExecution([
+                    'diff',
+                    '--name-only',
+                    '--diff-filter=U'
+                ]);
                 if (conflictResult.stdout.trim()) {
                     const conflictedFiles = conflictResult.stdout.trim().split('\n');
                     core.info(`Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`);
                     // Add all conflicted files
                     yield gitExecution(['add', ...conflictedFiles]);
                     // Commit the resolved conflicts
-                    yield gitExecution(['commit', '-m', `Resolved conflicts in cherry-pick of ${githubSha}`]);
+                    yield gitExecution([
+                        'commit',
+                        '-m',
+                        `Resolved conflicts in cherry-pick of ${githubSha}`
+                    ]);
                     core.info('Committed resolved conflicts');
                 }
             }
@@ -30500,7 +30517,7 @@ function run() {
             core.endGroup();
             // Create pull request
             core.startGroup('Opening pull request');
-            const pull = yield (0, github_helper_1.createPullRequest)(inputs, prBranch);
+            const pull = yield (0, github_helper_1.createPullRequest)(inputs, prBranch, conflict);
             core.setOutput('data', JSON.stringify(pull.data));
             core.setOutput('number', pull.data.number);
             core.setOutput('html_url', pull.data.html_url);
