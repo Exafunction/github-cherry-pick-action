@@ -20,6 +20,7 @@ export interface Inputs {
   cherryPickBranch?: string
   strategyOption?: string
   force?: boolean
+  commitConflicts?: boolean
 }
 
 export async function createPullRequest(

@@ -30405,6 +30405,7 @@ const io = __importStar(__nccwpck_require__(7436));
 const github_helper_1 = __nccwpck_require__(5366);
 const utils = __importStar(__nccwpck_require__(1314));
 const CHERRYPICK_EMPTY = 'The previous cherry-pick is now empty, possibly due to conflict resolution.';
+const CHERRYPICK_CONFLICT = 'CONFLICT(content)';
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -30423,7 +30424,8 @@ function run() {
                 reviewers: utils.getInputAsArray('reviewers'),
                 teamReviewers: utils.getInputAsArray('team-reviewers'),
                 cherryPickBranch: core.getInput('cherry-pick-branch'),
-                strategyOption: core.getInput('strategy-option')
+                strategyOption: core.getInput('strategy-option'),
+                commitConflicts: utils.getInputAsBoolean('commit-conflicts')
             };
             core.info(`Cherry pick into branch ${inputs.branch}!`);
             // the value of merge_commit_sha changes depending on the status of the pull request
@@ -30465,8 +30467,26 @@ function run() {
                 `--strategy-option=${(_a = inputs.strategyOption) !== null && _a !== void 0 ? _a : 'theirs'}`,
                 `${githubSha}`
             ]);
-            if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY)) {
+            if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY) && !result.stderr.includes(CHERRYPICK_CONFLICT)) {
                 throw new Error(`Unexpected error: ${result.stderr}`);
+            }
+            // Handle conflicts by finding and committing conflicted files
+            if (result.stderr.includes(CHERRYPICK_CONFLICT)) {
+                if (!inputs.commitConflicts) {
+                    throw new Error('Conflicts detected but commit-conflicts is set to false');
+                }
+                core.info('Conflicts detected. Finding and committing conflicted files...');
+                // Find all files with conflicts
+                const conflictResult = yield gitExecution(['diff', '--name-only', '--diff-filter=U']);
+                if (conflictResult.stdout.trim()) {
+                    const conflictedFiles = conflictResult.stdout.trim().split('\n');
+                    core.info(`Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`);
+                    // Add all conflicted files
+                    yield gitExecution(['add', ...conflictedFiles]);
+                    // Commit the resolved conflicts
+                    yield gitExecution(['commit', '-m', `Resolved conflicts in cherry-pick of ${githubSha}`]);
+                    core.info('Committed resolved conflicts');
+                }
             }
             core.endGroup();
             // Push new branch

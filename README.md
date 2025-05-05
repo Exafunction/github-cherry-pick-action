@@ -121,6 +121,7 @@ Mor informatoin can be found in the [GitHub Blog](https://github.blog/2020-08-03
 | `cherry-pick-branch` | Name of the new cherry pick branch                                                                                                                                                                                        | `cherry-pick-${inputs.branch}-${commitSha}`                          |
 | `force`              | Set true or false to forcefully push the cherrypicked changes branch to remote branch.                                                                                                                                    | false                                                                |
 | `strategy-option`    | Strategy option for cherry pick - default strategy is 'recursive', this is the X option to it                                                                                                                             |   `theirs`                                                                   |
+| `commit-conflicts`   | Set to true to commit conflicts                                                                                                                                           | false                                                                |
 
 ### Action outputs
 

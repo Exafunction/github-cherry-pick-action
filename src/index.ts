@@ -8,6 +8,8 @@ import * as utils from './utils'
 
 const CHERRYPICK_EMPTY =
   'The previous cherry-pick is now empty, possibly due to conflict resolution.'
+const CHERRYPICK_CONFLICT =
+  'CONFLICT(content)';
 
 export async function run(): Promise<void> {
   try {
@@ -25,7 +27,8 @@ export async function run(): Promise<void> {
       reviewers: utils.getInputAsArray('reviewers'),
       teamReviewers: utils.getInputAsArray('team-reviewers'),
       cherryPickBranch: core.getInput('cherry-pick-branch'),
-      strategyOption: core.getInput('strategy-option')
+      strategyOption: core.getInput('strategy-option'),
+      commitConflicts: utils.getInputAsBoolean('commit-conflicts')
     }
 
     core.info(`Cherry pick into branch ${inputs.branch}!`)
@@ -75,9 +78,34 @@ export async function run(): Promise<void> {
       `--strategy-option=${inputs.strategyOption ?? 'theirs'}`,
       `${githubSha}`
     ])
-    if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY)) {
+    if (result.exitCode !== 0 && !result.stderr.includes(CHERRYPICK_EMPTY) && !result.stderr.includes(CHERRYPICK_CONFLICT)) {
       throw new Error(`Unexpected error: ${result.stderr}`)
     }
+
+    // Handle conflicts by finding and committing conflicted files
+    if (result.stderr.includes(CHERRYPICK_CONFLICT)) {
+      if (!inputs.commitConflicts) {
+        throw new Error('Conflicts detected but commit-conflicts is set to false');
+      }
+
+      core.info('Conflicts detected. Finding and committing conflicted files...')
+
+      // Find all files with conflicts
+      const conflictResult = await gitExecution(['diff', '--name-only', '--diff-filter=U'])
+
+      if (conflictResult.stdout.trim()) {
+        const conflictedFiles = conflictResult.stdout.trim().split('\n')
+        core.info(`Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`)
+
+        // Add all conflicted files
+        await gitExecution(['add', ...conflictedFiles])
+
+        // Commit the resolved conflicts
+        await gitExecution(['commit', '-m', `Resolved conflicts in cherry-pick of ${githubSha}`])
+        core.info('Committed resolved conflicts')
+      }
+    }
+
     core.endGroup()
 
     // Push new branch

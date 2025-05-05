@@ -56,6 +56,10 @@ inputs:
   strategy-option:
     description: "Strategy option for cherry pick - default strategy is 'recursive', this is the X option to it"
     required: false
+  commit-conflicts:
+    description: "Set to true to commit conflicts"
+    required: false
+    default: "false"
 runs:
   using: node20
   main: dist/index.js
