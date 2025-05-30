@@ -49,7 +49,6 @@ export async function createPullRequest(
       // so use users can set `title: 'Cherry pick: {old_title}`
       title = title.replace('{old_title}', pull_request.title)
     }
-    core.info(`Using title '${title}'`)
 
     // Get PR body
     core.info(`Input body is '${inputs.body}'`)
@@ -66,8 +65,10 @@ export async function createPullRequest(
     }
 
     if (conflict) {
+      title = `CONFLICT!!!! ${title}`
       body = `${CONFLICTS_DETECTED_WARNING}${body}`
     }
+    core.info(`Using title '${title}'`)
     core.info(`Using body '${body}'`)
 
     // Create PR

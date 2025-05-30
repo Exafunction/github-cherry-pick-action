@@ -30267,7 +30267,6 @@ function createPullRequest(inputs, prBranch, conflict) {
                 // so use users can set `title: 'Cherry pick: {old_title}`
                 title = title.replace('{old_title}', pull_request.title);
             }
-            core.info(`Using title '${title}'`);
             // Get PR body
             core.info(`Input body is '${inputs.body}'`);
             let body = inputs.body;
@@ -30280,8 +30279,10 @@ function createPullRequest(inputs, prBranch, conflict) {
                 body = body.replace('{old_pull_request_id}', pull_request.number.toString());
             }
             if (conflict) {
+                title = `CONFLICT!!!! ${title}`;
                 body = `${CONFLICTS_DETECTED_WARNING}${body}`;
             }
+            core.info(`Using title '${title}'`);
             core.info(`Using body '${body}'`);
             // Create PR
             const pull = yield octokit.rest.pulls.create({

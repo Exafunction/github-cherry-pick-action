@@ -111,7 +111,8 @@ describe('run main', () => {
         reviewers: [],
         cherryPickBranch: ''
       }),
-      'cherry-pick-target-branch-XXXXXX'
+      'cherry-pick-target-branch-XXXXXX',
+      false
     )
   })
 
@@ -133,7 +134,8 @@ describe('run main', () => {
         reviewers: [],
         cherryPickBranch: 'my-custom-branch'
       }),
-      'my-custom-branch'
+      'my-custom-branch',
+      false
     )
   })
 
@@ -159,7 +161,8 @@ describe('run main', () => {
         reviewers: ['user1', 'user2', 'user3'],
         cherryPickBranch: 'my-custom-branch'
       }),
-      'my-custom-branch'
+      'my-custom-branch',
+      false
     )
   })
 })
