@@ -70,6 +70,7 @@ export async function run(): Promise<void> {
     // Cherry pick
     core.startGroup('Cherry picking')
     let conflict = false
+    let conflictedFiles: string[] = []
     const result = await gitExecution(
       [
         'cherry-pick',
@@ -110,7 +111,7 @@ export async function run(): Promise<void> {
       ])
 
       if (conflictResult.stdout.trim()) {
-        const conflictedFiles = conflictResult.stdout.trim().split('\n')
+        conflictedFiles = conflictResult.stdout.trim().split('\n')
         core.info(
           `Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`
         )
@@ -141,7 +142,12 @@ export async function run(): Promise<void> {
 
     // Create pull request
     core.startGroup('Opening pull request')
-    const pull = await createPullRequest(inputs, prBranch, conflict)
+    const pull = await createPullRequest(
+      inputs,
+      prBranch,
+      conflict,
+      conflictedFiles
+    )
     core.setOutput('data', JSON.stringify(pull.data))
     core.setOutput('number', pull.data.number)
     core.setOutput('html_url', pull.data.html_url)

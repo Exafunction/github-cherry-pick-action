@@ -28,7 +28,8 @@ export interface Inputs {
 export async function createPullRequest(
   inputs: Inputs,
   prBranch: string,
-  conflict: boolean
+  conflict: boolean,
+  conflictedFiles: string[] = []
 ): Promise<any> {
   const octokit = github.getOctokit(inputs.token)
   if (!github.context.payload) {
@@ -66,7 +67,11 @@ export async function createPullRequest(
 
     if (conflict) {
       title = `CONFLICT!!!! ${title}`
-      body = `${CONFLICTS_DETECTED_WARNING}${body}`
+      let conflictInfo = CONFLICTS_DETECTED_WARNING
+      if (conflictedFiles.length > 0) {
+        conflictInfo += `### Conflicted files\n${conflictedFiles.map(f => `- \`${f}\``).join('\n')}\n\n`
+      }
+      body = `${conflictInfo}${body}`
     }
     core.info(`Using title '${title}'`)
     core.info(`Using body '${body}'`)
