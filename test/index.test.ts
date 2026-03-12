@@ -112,7 +112,8 @@ describe('run main', () => {
         cherryPickBranch: ''
       }),
       'cherry-pick-target-branch-XXXXXX',
-      false
+      false,
+      []
     )
   })
 
@@ -135,7 +136,8 @@ describe('run main', () => {
         cherryPickBranch: 'my-custom-branch'
       }),
       'my-custom-branch',
-      false
+      false,
+      []
     )
   })
 
@@ -162,7 +164,8 @@ describe('run main', () => {
         cherryPickBranch: 'my-custom-branch'
       }),
       'my-custom-branch',
-      false
+      false,
+      []
     )
   })
 })

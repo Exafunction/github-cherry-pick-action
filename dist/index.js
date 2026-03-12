@@ -30246,8 +30246,8 @@ const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const ERROR_PR_REVIEW_FROM_AUTHOR = 'Review cannot be requested from pull request author';
 const CONFLICTS_DETECTED_WARNING = `## Cherry pick conflicts detected - please resolve conflicts and remove this line (cherrypick-conflict).\n\n`;
-function createPullRequest(inputs, prBranch, conflict) {
-    return __awaiter(this, void 0, void 0, function* () {
+function createPullRequest(inputs_1, prBranch_1, conflict_1) {
+    return __awaiter(this, arguments, void 0, function* (inputs, prBranch, conflict, conflictedFiles = []) {
         const octokit = github.getOctokit(inputs.token);
         if (!github.context.payload) {
             core.info(`Error: no payload in github.context`);
@@ -30280,7 +30280,11 @@ function createPullRequest(inputs, prBranch, conflict) {
             }
             if (conflict) {
                 title = `CONFLICT!!!! ${title}`;
-                body = `${CONFLICTS_DETECTED_WARNING}${body}`;
+                let conflictInfo = CONFLICTS_DETECTED_WARNING;
+                if (conflictedFiles.length > 0) {
+                    conflictInfo += `### Conflicted files\n${conflictedFiles.map(f => `- \`${f}\``).join('\n')}\n\n`;
+                }
+                body = `${conflictInfo}${body}`;
             }
             core.info(`Using title '${title}'`);
             core.info(`Using body '${body}'`);
@@ -30465,6 +30469,7 @@ function run() {
             // Cherry pick
             core.startGroup('Cherry picking');
             let conflict = false;
+            let conflictedFiles = [];
             const result = yield gitExecution([
                 'cherry-pick',
                 '-m',
@@ -30492,7 +30497,7 @@ function run() {
                     '--diff-filter=U'
                 ]);
                 if (conflictResult.stdout.trim()) {
-                    const conflictedFiles = conflictResult.stdout.trim().split('\n');
+                    conflictedFiles = conflictResult.stdout.trim().split('\n');
                     core.info(`Found ${conflictedFiles.length} files with conflicts: ${conflictedFiles.join(', ')}`);
                     // Add all conflicted files
                     yield gitExecution(['add', ...conflictedFiles]);
@@ -30517,7 +30522,7 @@ function run() {
             core.endGroup();
             // Create pull request
             core.startGroup('Opening pull request');
-            const pull = yield (0, github_helper_1.createPullRequest)(inputs, prBranch, conflict);
+            const pull = yield (0, github_helper_1.createPullRequest)(inputs, prBranch, conflict, conflictedFiles);
             core.setOutput('data', JSON.stringify(pull.data));
             core.setOutput('number', pull.data.number);
             core.setOutput('html_url', pull.data.html_url);
